@@ -1,1 +1,1 @@
-# Parcial-Final-Mec-nica
+# Parcial-Final-Mecánica
