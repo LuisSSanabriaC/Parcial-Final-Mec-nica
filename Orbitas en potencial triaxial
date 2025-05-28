@@ -1,0 +1,79 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+
+# Parámetros físicos
+G = 1.0
+M = 1.0
+a, b, c = 1.0, 0.9, 0.8
+epsilon = 0.05
+m = 1.0
+
+# Potencial y gradiente
+def Phi(x, y, z):
+    denom = np.sqrt((x**2)/a**2 + (y**2)/b**2 + (z**2)/c**2 + epsilon**2)
+    return -G * M / denom
+
+def grad_Phi(x, y, z):
+    denom = ((x**2)/a**2 + (y**2)/b**2 + (z**2)/c**2 + epsilon**2)**(3/2)
+    return G * M * np.array([
+        x / a**2,
+        y / b**2,
+        z / c**2
+    ]) / denom
+
+# Integrador Leap-Frog
+def leapfrog(x0, v0, dt, Nsteps):
+    x = np.zeros((Nsteps, 3))
+    v = np.zeros((Nsteps, 3))
+    x[0] = x0
+    v_half = v0 - 0.5 * dt * grad_Phi(*x0) / m
+    
+    for i in range(1, Nsteps):
+        x[i] = x[i-1] + dt * v_half
+        a = -grad_Phi(*x[i]) / m
+        v_half = v_half + dt * a
+        v[i] = v_half - 0.5 * dt * a
+    return x, v
+
+# Detección del período
+def detectar_periodo(x, dt, eje=0):
+    cruces = []
+    for i in range(1, len(x)):
+        if x[i-1, eje] < 0 and x[i, eje] >= 0:
+            cruces.append(i * dt)
+    if len(cruces) >= 2:
+        return 2 * np.mean(np.diff(cruces))
+    return None
+
+# Parámetros de integración
+dt = 0.01
+N = 5000
+
+# Condiciones iniciales con componente en z
+x0 = np.array([1.0, 0.0, 0.1])
+v0 = np.array([0.0, 0.5, 0.0])  # ajustable
+
+# Órbitas
+x, v = leapfrog(x0, v0, dt, N)
+T = detectar_periodo(x, dt)
+print(f"Periodo original: {T}")
+
+# Perturbación
+x0_pert = x0 + np.array([0.01, 0.0, 0.0])
+x_p, v_p = leapfrog(x0_pert, v0, dt, N)
+T_pert = detectar_periodo(x_p, dt)
+print(f"Periodo perturbado: {T_pert}")
+
+# Visualización 3D
+fig = plt.figure(figsize=(10, 6))
+ax = fig.add_subplot(111, projection='3d')
+ax.plot(x[:,0], x[:,1], x[:,2], label='Original')
+ax.plot(x_p[:,0], x_p[:,1], x_p[:,2], '--', label='Perturbada')
+ax.set_xlabel('x')
+ax.set_ylabel('y')
+ax.set_zlabel('z')
+ax.set_title('Órbitas en potencial triaxial 3D')
+ax.legend()
+plt.tight_layout()
+plt.show()
